@@ -1,1 +1,0 @@
-/Users/zequnl/Projects/neutrino_mpk/peakcounts/Om0.29780_As2.10000_mva0.02175_mvb0.02338_mvc0.05486_h0.70000_Ode0.69995_PC_S.npy
