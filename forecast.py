@@ -19,6 +19,34 @@ from scipy import interpolate, stats
 ####  cosmological_parameters.txt - parameters for the 101 models
 ####  note the PS/PC file names are slightly different than the parameter files, since they used different definition for Omega_m (in PS/PC, Omega_m=Omega_cdm+Omega_c, while parameter files Omega_m=Omega_cdm+Omega_c+Omega_nu), but the best way to match them is using A_s, which should be the same in both cases (but note 2 fiducial models both have A_s=2.1, but one has M_nu = 0)
 
+
+# I changed the interpolator function a bit
+def build_interp_zack(obs_arr, cosmo_params, function='multiquadric', smooth=0.0):
+    '''Build an interpolator:
+    Input:
+    (1) obs_arr has dimension (Npoints, Nbin), where Npoints = # of 
+        cosmological models (=100 here), 
+        and Nbins is the number of bins
+    (2) cosmo_params has dimension (Npoints, Nparams)
+    
+    Output:
+    spline_interps
+    
+    Usage:
+    spline_interps = build_interp_zack(obs_arr, cosmo_params)
+    spline_interps(_nu, Omega_m, A_s)
+    '''
+    
+    # create a list of Rbf for each independent mode
+    spline_interps = [ interpolate.Rbf(*cosmo_params.T, model, 
+                                       function=function, smooth=smooth) for model in obs_arr.T ]
+    
+    # return a function that applies Rbf to the parameters given, for each mode
+    return lambda params: np.array([ii(*params) for ii in spline_interps])
+
+
+
+
 ######### begin: build interpolator ###############
 def buildInterpolator(obs_arr, cosmo_params):
     '''Build an interpolator:
@@ -52,6 +80,8 @@ def buildInterpolator(obs_arr, cosmo_params):
     return interp_cosmo
 
 
+
+
 def findlevel (H):
     '''Find 68%, 95%, 99% confidence level for a probability 2D plane H. I sort the pixels, and count from highest probability pixel, until I accumulated 68%, 95%, 99% of the probability, and record the values. With these values, you can draw contours on H for 1,2,3 sigmas.
     
@@ -77,4 +107,116 @@ def findlevel (H):
     v99 = float(H.flat[idx[idx99]])
     V = [v68, v95, v99]
     return V
+
+
+def plot_cube(cube, axis_numbers,
+              fig=None, axes=None, 
+              label_list = [r'$M_{\nu}(eV)$', r'$\Omega_m$', r'$\sigma_8$'], 
+              fill=False, just_1sig=False, **kwargs):
+    """Convenience function for quick plotting of a cube
+    cube is 3D numpy array full of probabilities
+    axis_numbers is a list of 1D numpy arrays used for axes.
+    label_list is a list of strings to be used as label
+    kwargs are passed to contour
+    """
+    import matplotlib.pyplot as plt
+    
+    
+    num_vars = len(label_list)
+    inds = list(range(num_vars))
+    
+    if fig is None or axes is None:
+        fig, axes = plt.subplots(1,num_vars,figsize=(13,4))
+    
+    
+
+    for i, ax in enumerate(axes):
+        tot = np.sum(cube.flatten())
+        flattened = np.sum(cube, axis=i) / tot
+        
+        x_axis_ind, y_axis_ind = inds[:i] + inds[i+1:]
+        
+        X_AX, Y_AX = np.meshgrid(axis_numbers[x_axis_ind], 
+                                 axis_numbers[y_axis_ind], 
+                                 indexing='ij')
+        if fill:
+            ax.contourf( X_AX, Y_AX,
+                   flattened, **kwargs)
+        else:
+            c_68, c_95, c_99 = findlevel(flattened)
+            levs = [c_95, c_68]
+            if just_1sig:
+                levs = [c_68]
+            ax.contour(  X_AX, Y_AX,
+                       flattened, levels=levs, **kwargs)
+            
+        ax.set_xlabel(label_list[x_axis_ind])
+        ax.set_ylabel(label_list[y_axis_ind])
+
+    return fig, axes
+
+
+def plot_cube_getdist_style(cube, axis_numbers,
+              fig=None, axes=None, 
+              label_list = [r'$M_{\nu}(eV)$', r'$\Omega_m$', r'$\sigma_8$'], 
+              input_label = 'experiment',
+              input_color = 'blue',
+              fill=False, **kwargs):
+    """Convenience function for quick plotting of a cube
+    cube is 3D numpy array full of probabilities
+    axis_numbers is a list of 1D numpy arrays used for axes.
+    label_list is a list of strings to be used as label
+    kwargs are passed to contour
+    """
+    import matplotlib
+    import matplotlib.pyplot as plt
+    
+    
+    num_vars = len(label_list)
+    inds = list(range(num_vars))
+    
+    if fig is None or axes is None:
+        fig, axes = plt.subplots(1,num_vars,figsize=(13,4))
+    
+    
+
+    for i, ax in enumerate(axes):
+        tot = np.sum(cube.flatten())
+        flattened = np.sum(cube, axis=i) / tot
+        
+        x_axis_ind, y_axis_ind = inds[:i] + inds[i+1:]
+        
+        X_AX, Y_AX = np.meshgrid(axis_numbers[x_axis_ind], 
+                                 axis_numbers[y_axis_ind], 
+                                 indexing='ij')
+        if fill:
+            
+            color0 = matplotlib.colors.to_rgba(input_color)
+            color1 = list(color0)
+            color1[-1] = 0.3
+            color2 = list(color0)
+            color2[-1] = 0.6
+            
+            print()
+            
+            c_68, c_95, c_99 = findlevel(flattened)
+            last_cont = np.max(flattened)
+            ax.contourf( X_AX, Y_AX,
+                   flattened,levels=[c_95, c_68,last_cont*2], colors=(color1, color2), **kwargs)
+            ax.contour(  X_AX, Y_AX,
+                       flattened, levels=[c_95, c_68], colors=(color0,))
+            # generate fake histogram for legend
+            ax.plot([], '-', color=color2, label=input_label, lw=3)
+            
+        else:
+            
+            c_68, c_95, c_99 = findlevel(flattened)
+            ax.contour(  X_AX, Y_AX,
+                       flattened, levels=[c_95, c_68], **kwargs)
+            
+        ax.set_xlabel(label_list[x_axis_ind])
+        ax.set_ylabel(label_list[y_axis_ind])
+
+    return fig, axes
+
 
