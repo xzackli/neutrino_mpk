@@ -44,12 +44,13 @@ def plot_cube_getdist_style(cube, axis_numbers,
               label_list = [r'$M_{\nu}(eV)$', r'$\Omega_m$', r'$\sigma_8$'], 
               input_label = 'experiment',
               input_color = 'blue',
-              fill=False, **kwargs):
+              fill=False, just_one_sigma=False, only_do=-1, **kwargs):
     """Convenience function for quick plotting of a cube
     cube is 3D numpy array full of probabilities
     axis_numbers is a list of 1D numpy arrays used for axes.
     label_list is a list of strings to be used as label
     kwargs are passed to contour
+    only_do != -1, then will only execute one
     """
     
     num_vars = len(label_list)
@@ -61,38 +62,51 @@ def plot_cube_getdist_style(cube, axis_numbers,
     
 
     for i, ax in enumerate(axes):
-        tot = np.sum(cube.flatten())
-        flattened = np.sum(cube, axis=i) / tot
         
-        x_axis_ind, y_axis_ind = inds[:i] + inds[i+1:]
-        
-        X_AX, Y_AX = np.meshgrid(axis_numbers[x_axis_ind], 
-                                 axis_numbers[y_axis_ind], 
-                                 indexing='ij')
-        if fill:
+        # sometimes we only select one panel
+        if only_do == -1 or i == only_do:
             
-            color0 = matplotlib.colors.to_rgba(input_color)
-            color1 = list(color0)
-            color1[-1] = 0.3
-            color2 = list(color0)
-            color2[-1] = 0.6
-            
-            c_68, c_95, c_99 = findlevel(flattened)
-            last_cont = np.max(flattened)
-            ax.contourf( X_AX, Y_AX,
-                   flattened,levels=[c_95, c_68,last_cont*2], colors=(color1, color2), **kwargs)
-            ax.contour(  X_AX, Y_AX,
-                       flattened, levels=[c_95, c_68], colors=(color0,))
-            # generate fake histogram for legend
-            ax.plot([], '-', color=color2, label=input_label, lw=3)
-            
-        else:
-            
-            c_68, c_95, c_99 = findlevel(flattened)
-            ax.contour(  X_AX, Y_AX,
-                       flattened, levels=[c_95, c_68], **kwargs)
-            
-        ax.set_xlabel(label_list[x_axis_ind])
-        ax.set_ylabel(label_list[y_axis_ind])
+            tot = np.sum(cube.flatten())
+            flattened = np.sum(cube, axis=i) / tot
+
+            x_axis_ind, y_axis_ind = inds[:i] + inds[i+1:]
+
+            X_AX, Y_AX = np.meshgrid(axis_numbers[x_axis_ind], 
+                                     axis_numbers[y_axis_ind], 
+                                     indexing='ij')
+            if fill:
+
+                color0 = matplotlib.colors.to_rgba(input_color)
+                color1 = list(color0)
+                color1[-1] = 0.3
+                color2 = list(color0)
+                color2[-1] = 0.6
+
+                c_68, c_95, c_99 = findlevel(flattened)
+                last_cont = np.max(flattened)
+
+                if not just_one_sigma:
+                    ax.contourf( X_AX, Y_AX,
+                           flattened,levels=[c_95, c_68,last_cont*2], colors=(color1, color2), **kwargs)
+                    ax.contour(  X_AX, Y_AX,
+                               flattened, levels=[c_95, c_68], colors=(color0,))
+                else:
+                    ax.contourf( X_AX, Y_AX,
+                           flattened,levels=[c_68,last_cont*2], colors=(color1, color2), **kwargs)
+                    ax.contour(  X_AX, Y_AX,
+                               flattened, levels=[c_68], colors=(color0,))
+                # generate fake histogram for legend
+                ax.plot([], '-', color=color2, label=input_label, lw=3)
+
+            else:
+
+                c_68, c_95, c_99 = findlevel(flattened)
+                ax.contour(  X_AX, Y_AX,
+                           flattened, levels=[c_95, c_68], **kwargs)
+
+            ax.set_xlabel(label_list[x_axis_ind])
+            ax.set_ylabel(label_list[y_axis_ind])
 
     return fig, axes
+
+

@@ -1,0 +1,54 @@
+Last modified: December 4th, 2017
+Email questions to Jose Zorrilla: jz2596@columbia.edu
+
+
+
+Noisy observables (power spectrum and peak counts) for weak lensing maps
+including massive neutrinos.
+
+This data has been generated from unsmoothed, noiseless, convergence maps generated for cosmologies with massive neutrinos. Each cosmology has 1000 different map realizations. We genereated a single set of 1000 shape noise maps, add them to each of the 1000 noiseless maps, measure the power spectrum and peak counts, smooth the noisy map, and measure again the power spectrm and peak counts. The shape noise maps are white noise sampled from a gaussian of mean zero and standard deviation given by:
+
+   sigma = sigma_e / (n_gal * A_pix)**0.5 
+
+where sigma_e is the intrinsic ellipticity noise. We use for it:
+
+   sigma_e = 0.15 + 0.035 * z (FOR Noisy_OLD)
+   sigma = 0.35 NEW VALUE INDEPENDENT OF REDSHIFT
+
+being z the source redshift. n_gal is the source galaxy density (30 gal/arcmin**2 for OLD), and A_pix the pixel size in arcmin**2.
+
+   NEW VALUES FOR NGAL:
+   z=0.5 8.83154075745
+   z=1.0 13.2459963296
+   z=1.5 11.1471697714
+   z=2.0 7.36418828681
+   z=2.5 4.26106360488
+
+
+Description of contents of directory:
+
+NoisyObs:
+   For each cosmological model OmX.XXXXX_AsX.XXXXX..../1024b512, there is
+   a directory called MapsXX, with noisy observables from the noiseless 
+   convergence maps generated for a source redshift of z_s=X.X
+
+   The observables included are power spectrum and peak counts. Each
+   observable is measured over the unsmoothed map (~6 arcsec/pixel) and 
+   after smoothing the map with a 1 arcmin wide gaussian kernel. The
+   observables on the smoothed maps have the suffix _S in their name.
+   Each observable is stored in numpy array form.
+
+   The power spectrum is saved with two different binnings (50 and 200 bins)   , the first element of the array is the centers of the multipole bins, 
+   the remaining 1000 are the measurements over the 1000 \kappa maps for
+   that model.
+
+   The peak counts are measured over the same bins used for the noiseless
+   data, for ease of comparison. The first element of the array are the 
+   centers of the bins, in \kappa units, the second element the same centers   in s/n units. Here the "noise" is the mean rms of the noiseless maps for
+   the fiducial model. It may be worth re-binning the counts using the
+   \kappa values and the mean shape noise, but I kept the binning of the
+   noiseless data to make easy comparing the histograms from noiseless and
+   noisy maps.
+
+Code
+   This directory includes the scripts used to generate the data
